@@ -9,7 +9,7 @@
       "command": [
         "uv",
         "--directory",
-        "/Users/wendell/py_projects/mcp-safeline",
+        "/pat/to/mcp-safeline",
         "run",
         "python",
         "-m",
