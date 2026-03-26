@@ -561,9 +561,9 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
                     },
                 },
             ),
-            # ---- 站点管理 ----
+            # ---- 软件反向代理站点管理 ----
             types.Tool(
-                name="list_websites",
+                name="list_software_reverse_proxy_websites",
                 description="获取软件版反向代理站点列表",
                 inputSchema={
                     "type": "object",
@@ -579,7 +579,7 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
                 },
             ),
             types.Tool(
-                name="create_website",
+                name="create_software_reverse_proxy_website",
                 description="新建软件版反向代理站点",
                 inputSchema={
                     "type": "object",
@@ -610,7 +610,7 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
                 },
             ),
             types.Tool(
-                name="update_website",
+                name="update_software_reverse_proxy_website",
                 description="编辑软件版反向代理站点",
                 inputSchema={
                     "type": "object",
@@ -638,8 +638,565 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
                 },
             ),
             types.Tool(
-                name="delete_website",
+                name="delete_software_reverse_proxy_website",
                 description="删除软件版反向代理站点",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "id__in": {
+                            "type": "array",
+                            "items": {"type": "integer"},
+                            "description": "站点 ID 列表",
+                        },
+                    },
+                    "required": ["id__in"],
+                },
+            ),
+            # ---- 软件集群反向代理站点管理 ----
+            types.Tool(
+                name="list_software_cluster_reverse_proxy_websites",
+                description="获取软件集群反向代理站点列表",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "id__in": {
+                            "type": "array",
+                            "items": {"type": "integer"},
+                            "description": "按站点 ID 过滤（可选）",
+                        },
+                        "count": {"type": "integer", "description": "分页：每页数量"},
+                        "offset": {"type": "integer", "description": "分页：偏移量"},
+                    },
+                },
+            ),
+            types.Tool(
+                name="create_software_cluster_reverse_proxy_website",
+                description="新建软件集群反向代理站点",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "站点名称"},
+                        "ports": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                            "description": "端口配置列表，每项包含 port/ssl 等字段",
+                        },
+                        "upstreams": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                            "description": "上游服务器配置列表，每项包含 host/port/protocol 等字段",
+                        },
+                        "server_names": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "域名列表，如 ['*'] 或 ['example.com']",
+                        },
+                        "comment": {"type": "string", "description": "备注（可选）"},
+                        "policy_group": {
+                            "type": "integer",
+                            "description": "策略组 ID（可选，默认为 3）",
+                        },
+                        "session_method": {
+                            "type": "object",
+                            "description": "会话保持方法，如 {'type': 'off', 'param': ''}",
+                        },
+                        "detector_ip_source_from": {
+                            "type": "string",
+                            "description": "检测器IP来源，如 'local' 或 'default'",
+                        },
+                        "url_paths": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                            "description": "URL路径配置，如 [{'op': 'pre', 'url_path': '/'}]",
+                        },
+                    },
+                    "required": ["name", "ports", "upstreams", "session_method"],
+                },
+            ),
+            types.Tool(
+                name="update_software_cluster_reverse_proxy_website",
+                description="编辑软件集群反向代理站点",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer", "description": "站点 ID"},
+                        "name": {"type": "string", "description": "站点名称"},
+                        "ports": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                            "description": "端口配置列表",
+                        },
+                        "upstreams": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                            "description": "上游服务器配置列表",
+                        },
+                        "server_names": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "域名列表，如 ['*'] 或 ['example.com']",
+                        },
+                        "comment": {"type": "string", "description": "备注（可选）"},
+                        "session_method": {
+                            "type": "object",
+                            "description": "会话保持方法",
+                        },
+                    },
+                    "required": ["id", "name", "ports", "upstreams", "session_method"],
+                },
+            ),
+            types.Tool(
+                name="delete_software_cluster_reverse_proxy_website",
+                description="删除软件集群反向代理站点",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "id__in": {
+                            "type": "array",
+                            "items": {"type": "integer"},
+                            "description": "站点 ID 列表",
+                        },
+                    },
+                    "required": ["id__in"],
+                },
+            ),
+            # ---- 硬件版反向代理站点管理 ----
+            types.Tool(
+                name="list_hardware_reverse_proxy_websites",
+                description="获取硬件版反向代理站点列表",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "id__in": {
+                            "type": "array",
+                            "items": {"type": "integer"},
+                            "description": "按站点 ID 过滤（可选）",
+                        },
+                        "count": {"type": "integer", "description": "分页：每页数量"},
+                        "offset": {"type": "integer", "description": "分页：偏移量"},
+                    },
+                },
+            ),
+            types.Tool(
+                name="create_hardware_reverse_proxy_website",
+                description="新建硬件版反向代理站点",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "站点名称"},
+                        "interface": {"type": "string", "description": "接口"},
+                        "ip": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "IP 地址列表",
+                        },
+                        "ports": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                            "description": "监听端口配置列表",
+                        },
+                        "server_names": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "域名列表",
+                        },
+                        "url_paths": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                            "description": "生效地址列表",
+                        },
+                        "backend_config": {
+                            "type": "object",
+                            "description": "后端配置",
+                        },
+                        "session_method": {
+                            "type": "object",
+                            "description": "会话保持方法",
+                        },
+                        "policy_group": {
+                            "type": "integer",
+                            "description": "防护策略组ID",
+                        },
+                        "detector_ip_source_from": {
+                            "type": "string",
+                            "enum": ["local", "default"],
+                            "description": "源 IP 获取方式来源",
+                        },
+                        "is_enabled": {
+                            "type": "boolean",
+                            "description": "站点状态",
+                        },
+                        "ssl_cert": {
+                            "type": "integer",
+                            "description": "SSL证书ID",
+                        },
+                        "ssl_gm_cert": {
+                            "type": "integer",
+                            "description": "国密SSL证书ID",
+                        },
+                        "remark": {
+                            "type": "string",
+                            "description": "备注信息",
+                        },
+                    },
+                    "required": [
+                        "name",
+                        "interface",
+                        "ip",
+                        "ports",
+                        "server_names",
+                        "session_method",
+                        "policy_group",
+                    ],
+                },
+            ),
+            types.Tool(
+                name="update_hardware_reverse_proxy_website",
+                description="编辑硬件版反向代理站点",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer", "description": "站点 ID"},
+                        "name": {"type": "string", "description": "站点名称"},
+                        "interface": {"type": "string", "description": "接口"},
+                        "ip": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "IP 地址列表",
+                        },
+                        "ports": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                            "description": "监听端口配置列表",
+                        },
+                        "server_names": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "域名列表",
+                        },
+                        "url_paths": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                            "description": "生效地址列表",
+                        },
+                        "backend_config": {
+                            "type": "object",
+                            "description": "后端配置",
+                        },
+                        "session_method": {
+                            "type": "object",
+                            "description": "会话保持方法",
+                        },
+                        "policy_group": {
+                            "type": "integer",
+                            "description": "防护策略组ID",
+                        },
+                        "detector_ip_source_from": {
+                            "type": "string",
+                            "enum": ["local", "default"],
+                            "description": "源 IP 获取方式来源",
+                        },
+                        "is_enabled": {
+                            "type": "boolean",
+                            "description": "站点状态",
+                        },
+                        "ssl_cert": {
+                            "type": "integer",
+                            "description": "SSL证书ID",
+                        },
+                        "ssl_gm_cert": {
+                            "type": "integer",
+                            "description": "国密SSL证书ID",
+                        },
+                        "remark": {
+                            "type": "string",
+                            "description": "备注信息",
+                        },
+                    },
+                    "required": [
+                        "id",
+                        "name",
+                        "interface",
+                        "ip",
+                        "ports",
+                        "server_names",
+                        "session_method",
+                        "policy_group",
+                    ],
+                },
+            ),
+            types.Tool(
+                name="delete_hardware_reverse_proxy_website",
+                description="删除硬件版反向代理站点",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "id__in": {
+                            "type": "array",
+                            "items": {"type": "integer"},
+                            "description": "站点 ID 列表",
+                        },
+                    },
+                    "required": ["id__in"],
+                },
+            ),
+            # ---- 硬件版透明桥站点管理 ----
+            types.Tool(
+                name="list_hardware_transparent_bridging_websites",
+                description="获取硬件版透明桥站点列表",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "id__in": {
+                            "type": "array",
+                            "items": {"type": "integer"},
+                            "description": "按站点 ID 过滤（可选）",
+                        },
+                        "count": {"type": "integer", "description": "分页：每页数量"},
+                        "offset": {"type": "integer", "description": "分页：偏移量"},
+                    },
+                },
+            ),
+            types.Tool(
+                name="create_hardware_transparent_bridging_website",
+                description="新建硬件版透明桥站点",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "站点名称"},
+                        "addrs": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "地址列表",
+                        },
+                        "server_names": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "域名列表",
+                        },
+                        "url_paths": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                            "description": "生效地址列表",
+                        },
+                        "policy_group": {
+                            "type": "integer",
+                            "description": "防护策略组ID",
+                        },
+                        "detector_ip_source_from": {
+                            "type": "string",
+                            "enum": ["local", "default"],
+                            "description": "源 IP 获取方式来源",
+                        },
+                        "is_enabled": {
+                            "type": "boolean",
+                            "description": "站点状态",
+                        },
+                        "remark": {
+                            "type": "string",
+                            "description": "备注信息",
+                        },
+                    },
+                    "required": ["name", "addrs", "server_names", "policy_group"],
+                },
+            ),
+            types.Tool(
+                name="update_hardware_transparent_bridging_website",
+                description="编辑硬件版透明桥站点",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer", "description": "站点 ID"},
+                        "name": {"type": "string", "description": "站点名称"},
+                        "addrs": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "地址列表",
+                        },
+                        "server_names": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "域名列表",
+                        },
+                        "url_paths": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                            "description": "生效地址列表",
+                        },
+                        "policy_group": {
+                            "type": "integer",
+                            "description": "防护策略组ID",
+                        },
+                        "detector_ip_source_from": {
+                            "type": "string",
+                            "enum": ["local", "default"],
+                            "description": "源 IP 获取方式来源",
+                        },
+                        "is_enabled": {
+                            "type": "boolean",
+                            "description": "站点状态",
+                        },
+                        "remark": {
+                            "type": "string",
+                            "description": "备注信息",
+                        },
+                    },
+                    "required": ["id", "name", "addrs", "server_names", "policy_group"],
+                },
+            ),
+            types.Tool(
+                name="delete_hardware_transparent_bridging_website",
+                description="删除硬件版透明桥站点",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "id__in": {
+                            "type": "array",
+                            "items": {"type": "integer"},
+                            "description": "站点 ID 列表",
+                        },
+                    },
+                    "required": ["id__in"],
+                },
+            ),
+            # ---- 硬件版透明代理站点管理 ----
+            types.Tool(
+                name="list_hardware_transparent_proxy_websites",
+                description="获取硬件版透明代理站点列表",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "id__in": {
+                            "type": "array",
+                            "items": {"type": "integer"},
+                            "description": "按站点 ID 过滤（可选）",
+                        },
+                        "count": {"type": "integer", "description": "分页：每页数量"},
+                        "offset": {"type": "integer", "description": "分页：偏移量"},
+                    },
+                },
+            ),
+            types.Tool(
+                name="create_hardware_transparent_proxy_website",
+                description="新建硬件版透明代理站点",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "站点名称"},
+                        "interface": {"type": "string", "description": "接口"},
+                        "server_names": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "域名列表",
+                        },
+                        "addrs": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                            "description": "地址配置列表",
+                        },
+                        "url_paths": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                            "description": "生效地址列表",
+                        },
+                        "policy_group": {
+                            "type": "integer",
+                            "description": "防护策略组ID",
+                        },
+                        "detector_ip_source_from": {
+                            "type": "string",
+                            "enum": ["local", "default"],
+                            "description": "源 IP 获取方式来源",
+                        },
+                        "is_enabled": {
+                            "type": "boolean",
+                            "description": "站点状态",
+                        },
+                        "ssl_cert": {
+                            "type": "integer",
+                            "description": "SSL证书ID",
+                        },
+                        "ssl_gm_cert": {
+                            "type": "integer",
+                            "description": "国密SSL证书ID",
+                        },
+                        "remark": {
+                            "type": "string",
+                            "description": "备注信息",
+                        },
+                    },
+                    "required": [
+                        "name",
+                        "interface",
+                        "server_names",
+                        "addrs",
+                        "policy_group",
+                    ],
+                },
+            ),
+            types.Tool(
+                name="update_hardware_transparent_proxy_website",
+                description="编辑硬件版透明代理站点",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer", "description": "站点 ID"},
+                        "name": {"type": "string", "description": "站点名称"},
+                        "interface": {"type": "string", "description": "接口"},
+                        "server_names": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "域名列表",
+                        },
+                        "addrs": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                            "description": "地址配置列表",
+                        },
+                        "url_paths": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                            "description": "生效地址列表",
+                        },
+                        "policy_group": {
+                            "type": "integer",
+                            "description": "防护策略组ID",
+                        },
+                        "detector_ip_source_from": {
+                            "type": "string",
+                            "enum": ["local", "default"],
+                            "description": "源 IP 获取方式来源",
+                        },
+                        "is_enabled": {
+                            "type": "boolean",
+                            "description": "站点状态",
+                        },
+                        "ssl_cert": {
+                            "type": "integer",
+                            "description": "SSL证书ID",
+                        },
+                        "ssl_gm_cert": {
+                            "type": "integer",
+                            "description": "国密SSL证书ID",
+                        },
+                        "remark": {
+                            "type": "string",
+                            "description": "备注信息",
+                        },
+                    },
+                    "required": [
+                        "id",
+                        "name",
+                        "interface",
+                        "server_names",
+                        "addrs",
+                        "policy_group",
+                    ],
+                },
+            ),
+            types.Tool(
+                name="delete_hardware_transparent_proxy_website",
+                description="删除硬件版透明代理站点",
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -1083,7 +1640,37 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
                         },
                         "pattern": {
                             "type": "object",
-                            "description": "匹配模式，格式为 {$AND: [{cidr: {remote_addr: IP/CIDR}, str: {host: 域名}}]}",
+                            "description": """匹配模式，逻辑运算符: $AND, $OR, $NOT
+匹配类型:
+  - infix: 包含匹配（模糊匹配）
+  - str: 精确匹配
+  - re: 正则表达式匹配
+  - cidr: IP/CIDR 范围匹配
+可用字段:
+  - urlpath: URL 路径
+  - decoded_path: 解码后的路径
+  - decoded_query: 解码后的查询参数
+  - query: 查询参数 {"key": "id", "value": "^li.*"}
+  - method: 请求方法 (GET/POST/PUT/DELETE 等)
+  - host: 主机名
+  - cookie_raw: 原始 Cookie 字符串
+  - cookie: Cookie (key/value 分离)
+  - user_agent: User-Agent
+  - remote_addr: 客户端 IP (CIDR 格式如 10.0.0.0/8)
+  - x_forwarded_for: X-Forwarded-For 头
+  - origin: Origin 头
+  - custom_header: 自定义请求头 {"key": "x-realip", "value": "9.9.9.9"}
+  - request_header: 请求头（模糊匹配）
+  - content_type: Content-Type
+  - socket_src_ip: 源 IP（Socket 层）
+  - response_body: 响应体
+示例:
+  - 路径包含: {"infix": {"urlpath": "admin"}}
+  - 路径不包含: {"$NOT": [{"infix": {"urlpath": "test"}}]}
+  - IP 范围: {"cidr": {"remote_addr": "10.0.0.0/8"}}
+  - 多条件 AND: {"$AND": [{"infix": {"urlpath": "api"}}, {"str": {"host": "example.com"}}]}
+  - 多条件 OR: {"$OR": [{"infix": {"urlpath": "a"}}, {"infix": {"urlpath": "b"}}]}
+每个匹配项后面可加 "decode_methods": [] 空数组""",
                         },
                         "is_enabled": {"type": "boolean", "description": "是否启用"},
                         "is_global": {
@@ -1147,7 +1734,40 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
                         },
                         "comment": {"type": "string", "description": "备注"},
                         "description": {"type": "string", "description": "规则描述"},
-                        "pattern": {"type": "object", "description": "匹配模式"},
+                        "pattern": {
+                            "type": "object",
+                            "description": """匹配模式，逻辑运算符: $AND, $OR, $NOT
+匹配类型:
+  - infix: 包含匹配（模糊匹配）
+  - str: 精确匹配
+  - re: 正则表达式匹配
+  - cidr: IP/CIDR 范围匹配
+可用字段:
+  - urlpath: URL 路径
+  - decoded_path: 解码后的路径
+  - decoded_query: 解码后的查询参数
+  - query: 查询参数 {"key": "id", "value": "^li.*"}
+  - method: 请求方法 (GET/POST/PUT/DELETE 等)
+  - host: 主机名
+  - cookie_raw: 原始 Cookie 字符串
+  - cookie: Cookie (key/value 分离)
+  - user_agent: User-Agent
+  - remote_addr: 客户端 IP (CIDR 格式如 10.0.0.0/8)
+  - x_forwarded_for: X-Forwarded-For 头
+  - origin: Origin 头
+  - custom_header: 自定义请求头 {"key": "x-realip", "value": "9.9.9.9"}
+  - request_header: 请求头（模糊匹配）
+  - content_type: Content-Type
+  - socket_src_ip: 源 IP（Socket 层）
+  - response_body: 响应体
+示例:
+  - 路径包含: {"infix": {"urlpath": "admin"}}
+  - 路径不包含: {"$NOT": [{"infix": {"urlpath": "test"}}]}
+  - IP 范围: {"cidr": {"remote_addr": "10.0.0.0/8"}}
+  - 多条件 AND: {"$AND": [{"infix": {"urlpath": "api"}}, {"str": {"host": "example.com"}}]}
+  - 多条件 OR: {"$OR": [{"infix": {"urlpath": "a"}}, {"infix": {"urlpath": "b"}}]}
+每个匹配项后面可加 "decode_methods": [] 空数组""",
+                        },
                         "action": {"type": "string", "description": "执行动作"},
                         "is_enabled": {"type": "boolean", "description": "是否启用"},
                         "is_global": {
@@ -1317,7 +1937,13 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
                 description="查看 ES 索引信息",
                 inputSchema={
                     "type": "object",
-                    "properties": {},
+                    "properties": {
+                        "alias": {
+                            "type": "string",
+                            "description": "索引别名（必填）。常见值：access_log, bot_log, detect_log, portrait_log, portrait_sample_log, mgt_dashboard_plugin, mgt_dashboard_web_log, reputation, plugin_log, audit_log",
+                        }
+                    },
+                    "required": ["alias"],
                 },
             ),
             types.Tool(
@@ -1329,6 +1955,30 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
                         "index_name": {"type": "string", "description": "索引名称"},
                     },
                     "required": ["index_name"],
+                },
+            ),
+            types.Tool(
+                name="delete_es_indices",
+                description="删除 ES 归档索引（批量）",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "indices": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "索引列表（元素为索引名）",
+                        },
+                        "action": {
+                            "type": "string",
+                            "enum": ["unfreeze", "freeze", "download"],
+                            "description": "行为选项（默认 unfreeze）",
+                        },
+                        "scope": {
+                            "type": "string",
+                            "description": "索引别名（可选）",
+                        },
+                    },
+                    "required": ["indices"],
                 },
             ),
             types.Tool(
@@ -1805,15 +2455,15 @@ async def _dispatch(client: SafeLineClient, name: str, args: dict) -> Any:
             params["duration"] = args["duration"]
         return client.get("/api/OverviewAPI", params=params)
 
-    # ---- 站点管理 ----
-    elif name == "list_websites":
+    # ---- 软件反向代理站点管理 ----
+    elif name == "list_software_reverse_proxy_websites":
         params = {}
         for key in ("id__in", "count", "offset"):
             if key in args:
                 params[key] = args[key]
         return client.get("/api/SoftwareReverseProxyWebsiteAPI", params=params)
 
-    elif name == "create_website":
+    elif name == "create_software_reverse_proxy_website":
         # Extract ports from host configuration
         ports = []
         for host_config in args.get("host", []):
@@ -1913,7 +2563,7 @@ async def _dispatch(client: SafeLineClient, name: str, args: dict) -> Any:
         }
         return client.post("/api/SoftwareReverseProxyWebsiteAPI", body)
 
-    elif name == "update_website":
+    elif name == "update_software_reverse_proxy_website":
         # First get the existing site configuration
         existing_sites = client.get(
             "/api/SoftwareReverseProxyWebsiteAPI", params={"id__in": [args["id"]]}
@@ -2069,9 +2719,616 @@ async def _dispatch(client: SafeLineClient, name: str, args: dict) -> Any:
         }
         return client.put("/api/SoftwareReverseProxyWebsiteAPI", body)
 
-    elif name == "delete_website":
+    elif name == "delete_software_reverse_proxy_website":
         return client.delete(
             "/api/SoftwareReverseProxyWebsiteAPI", {"id__in": args["id__in"]}
+        )
+
+    # ---- 软件集群反向代理站点管理 ----
+    elif name == "list_software_cluster_reverse_proxy_websites":
+        params = {}
+        for key in ("id__in", "count", "offset"):
+            if key in args:
+                params[key] = args[key]
+        return client.get("/api/SoftwareClusterReverseProxyWebsiteAPI", params=params)
+
+    elif name == "create_software_cluster_reverse_proxy_website":
+        # Extract ports configuration
+        ports = []
+        for port_config in args.get("ports", []):
+            port_obj = {
+                "port": port_config.get("port", 80),
+                "ssl": port_config.get("ssl", False),
+                "http2": port_config.get("http2", False),
+                "is_double_cert": port_config.get("is_double_cert", False),
+                "sni": port_config.get("sni", False),
+            }
+            ports.append(port_obj)
+
+        # Extract upstream servers
+        servers = []
+        for upstream in args.get("upstreams", []):
+            server_config = {
+                "host": upstream.get("host", ""),
+                "port": upstream.get("port", 80),
+                "protocol": upstream.get("protocol", "http"),
+                "is_enabled": upstream.get("is_enabled", True),
+                "weight": upstream.get("weight", 1),
+            }
+            servers.append(server_config)
+
+        # Extract URL paths
+        url_paths = args.get("url_paths", [{"op": "pre", "url_path": "/"}])
+
+        body = {
+            "name": args["name"],
+            "ports": ports,
+            "server_names": args.get("server_names", ["*"]),
+            "url_paths": url_paths,
+            "ssl_cert": None,
+            "ssl_gm_cert": None,
+            "interface": "virtual",
+            "ip": ["0.0.0.0", "::"],
+            "operation_mode": "Software Cluster Reverse Proxy",
+            "policy_group": args.get("policy_group", 3),
+            "ssl_ciphers": "",
+            "ssl_protocols": [],
+            "session_method": args.get("session_method", {"type": "off", "param": ""}),
+            "create_time": 0,
+            "last_update_time": 0,
+            "is_enabled": True,
+            "backend_config": {
+                "type": "proxy",
+                "servers": servers,
+                "load_balance_policy": "Round Robin",
+                "x_forwarded_for_action": "append",
+                "keepalive_config": "default_keepalive_config",
+                "keepalive": 0,
+                "keepalive_timeout": 0,
+                "custom_config": {"ignore_types": [], "custom": {}, "custom_web": []},
+                "slow_attack": {"is_enabled": False, "isAuto": False},
+                "header_config": [],
+                "health_check_config": {
+                    "is_enabled": False,
+                    "check_http_expect_alive": ["http_2xx", "http_3xx"],
+                    "check_type": "http",
+                    "interval": 30000,
+                    "fall": 5,
+                    "rise": 2,
+                    "timeout": 1000,
+                    "port": 0,
+                    "host": "",
+                    "method": "GET",
+                    "path": "/",
+                },
+            },
+            "detector_ip_source": args.get("detector_ip_source", ["Socket"]),
+            "policy_rules": [],
+            "access_log": {
+                "is_enabled": True,
+                "log_request_header": False,
+                "log_response_header": False,
+                "log_option": "Non-Persistence",
+                "req_body": True,
+                "rsp_body": False,
+            },
+            "health_check_status": "",
+            "proxy_ip_list": [],
+            "proxy_ip_groups": [],
+            "remark": args.get("comment", ""),
+            "proxy_bind_config": {
+                "enable": False,
+                "proxy_bind_ip_list": None,
+                "hash_select_ip_method": "remote_addr_and_port",
+            },
+            "bot_config": {"is_enabled": False},
+            "dynamic_resolve_upstream_config": {
+                "is_enabled": False,
+                "dynamic_resolve_fallback": "next",
+                "dynamic_resolve_fail_timeout": 10,
+                "resolver_config": {"valid": 0, "resolver_timeout": 30},
+            },
+            "deep_detection_config": {"is_enabled": False},
+            "bot_configs": [],
+            "selected_tengine": None,
+            "anti_tamper_status": "not_enabled",
+            "anti_tamper_rules": [],
+            "asset_group": 1,
+            "ntlm_enabled": False,
+            "proxy_protocol": False,
+            "realip_config_enable": False,
+            "realip_config": {
+                "set_real_ip_from": "",
+                "real_ip_header": "proxy_protocol",
+            },
+            "detector_ip_source_from": args.get("detector_ip_source_from", "local"),
+            "cookie_security": {
+                "action": "dry_run",
+                "is_enabled": False,
+                "log_option": "Drop",
+                "security_attribute": [],
+                "protection": "propertyOnly",
+                "cookie": [],
+            },
+            "intf_config": {
+                "training_config": {
+                    "days": 3,
+                    "period": {"start": "7:00", "end": "23:59"},
+                    "min_samples": 1000,
+                    "min_src_ips": 100,
+                    "train_atks": False,
+                    "log_samples": True,
+                },
+                "restart_training_config": {
+                    "enabled": True,
+                    "cycle": 0,
+                    "max_detect_num": 0,
+                    "abnormal_range": [0, 100],
+                    "inconsistent_range": [0, 10],
+                    "auto_restart_on_failure": False,
+                },
+                "auto_intf_detection_config": {"enabled": True, "filters": []},
+            },
+        }
+        return client.post("/api/SoftwareClusterReverseProxyWebsiteAPI", body)
+
+    elif name == "update_software_cluster_reverse_proxy_website":
+        # First get the existing site configuration
+        existing_sites = client.get(
+            "/api/SoftwareClusterReverseProxyWebsiteAPI",
+            params={"id__in": [args["id"]]},
+        )
+        if not existing_sites or not existing_sites.get("data"):
+            return {"error": f"Site with ID {args['id']} not found"}
+
+        existing_site = existing_sites["data"][0]
+
+        # Extract ports configuration
+        ports = []
+        for port_config in args.get("ports", []):
+            port_obj = {
+                "port": port_config.get("port", 80),
+                "ssl": port_config.get("ssl", False),
+                "http2": port_config.get("http2", False),
+                "is_double_cert": port_config.get("is_double_cert", False),
+                "sni": port_config.get("sni", False),
+            }
+            ports.append(port_obj)
+
+        # Extract upstream servers
+        servers = []
+        for upstream in args.get("upstreams", []):
+            server_config = {
+                "host": upstream.get("host", ""),
+                "port": upstream.get("port", 80),
+                "protocol": upstream.get("protocol", "http"),
+                "is_enabled": upstream.get("is_enabled", True),
+                "weight": upstream.get("weight", 1),
+            }
+            servers.append(server_config)
+
+        body = {
+            "id": args["id"],
+            "name": args["name"],
+            "ports": ports,
+            "server_names": args.get(
+                "server_names", existing_site.get("server_names", ["*"])
+            ),
+            "url_paths": existing_site.get(
+                "url_paths", [{"op": "pre", "url_path": "/", "sni": False}]
+            ),
+            "ssl_cert": existing_site.get("ssl_cert"),
+            "ssl_gm_cert": existing_site.get("ssl_gm_cert"),
+            "interface": existing_site.get("interface", "virtual"),
+            "ip": existing_site.get("ip", ["0.0.0.0", "::"]),
+            "operation_mode": existing_site.get(
+                "operation_mode", "Software Cluster Reverse Proxy"
+            ),
+            "policy_group": args.get(
+                "policy_group", existing_site.get("policy_group", 3)
+            ),
+            "ssl_ciphers": existing_site.get("ssl_ciphers", ""),
+            "ssl_protocols": existing_site.get("ssl_protocols", []),
+            "session_method": args.get(
+                "session_method",
+                existing_site.get("session_method", {"type": "off", "param": ""}),
+            ),
+            "create_time": existing_site.get("create_time", 0),
+            "last_update_time": 0,
+            "is_enabled": existing_site.get("is_enabled", True),
+            "backend_config": {
+                "type": "proxy",
+                "servers": servers,
+                "load_balance_policy": existing_site.get("backend_config", {}).get(
+                    "load_balance_policy", "Round Robin"
+                ),
+                "x_forwarded_for_action": existing_site.get("backend_config", {}).get(
+                    "x_forwarded_for_action", "append"
+                ),
+                "keepalive_config": existing_site.get("backend_config", {}).get(
+                    "keepalive_config", "default_keepalive_config"
+                ),
+                "keepalive": existing_site.get("backend_config", {}).get(
+                    "keepalive", 0
+                ),
+                "keepalive_timeout": existing_site.get("backend_config", {}).get(
+                    "keepalive_timeout", 0
+                ),
+                "custom_config": existing_site.get("backend_config", {}).get(
+                    "custom_config",
+                    {"ignore_types": [], "custom": {}, "custom_web": []},
+                ),
+                "slow_attack": existing_site.get("backend_config", {}).get(
+                    "slow_attack", {"is_enabled": False, "isAuto": False}
+                ),
+                "header_config": existing_site.get("backend_config", {}).get(
+                    "header_config", []
+                ),
+                "health_check_config": existing_site.get("backend_config", {}).get(
+                    "health_check_config",
+                    {
+                        "is_enabled": False,
+                        "check_http_expect_alive": ["http_2xx", "http_3xx"],
+                        "check_type": "http",
+                        "interval": 30000,
+                        "fall": 5,
+                        "rise": 2,
+                        "timeout": 1000,
+                        "port": 0,
+                        "host": "",
+                        "method": "GET",
+                        "path": "/",
+                    },
+                ),
+            },
+            "detector_ip_source": existing_site.get("detector_ip_source", ["Socket"]),
+            "policy_rules": existing_site.get("policy_rules", []),
+            "access_log": existing_site.get(
+                "access_log",
+                {
+                    "is_enabled": True,
+                    "log_request_header": False,
+                    "log_response_header": False,
+                    "log_option": "Non-Persistence",
+                    "req_body": True,
+                    "rsp_body": False,
+                },
+            ),
+            "health_check_status": existing_site.get("health_check_status", ""),
+            "proxy_ip_list": existing_site.get("proxy_ip_list", []),
+            "proxy_ip_groups": existing_site.get("proxy_ip_groups", []),
+            "remark": args.get("comment", existing_site.get("remark", "")),
+            "proxy_bind_config": existing_site.get(
+                "proxy_bind_config",
+                {
+                    "enable": False,
+                    "proxy_bind_ip_list": None,
+                    "hash_select_ip_method": "remote_addr_and_port",
+                },
+            ),
+            "bot_config": existing_site.get("bot_config", {"is_enabled": False}),
+            "dynamic_resolve_upstream_config": existing_site.get(
+                "dynamic_resolve_upstream_config",
+                {
+                    "is_enabled": False,
+                    "dynamic_resolve_fallback": "next",
+                    "dynamic_resolve_fail_timeout": 10,
+                    "resolver_config": {"valid": 0, "resolver_timeout": 30},
+                },
+            ),
+            "deep_detection_config": existing_site.get(
+                "deep_detection_config", {"is_enabled": False}
+            ),
+            "bot_configs": existing_site.get("bot_configs", []),
+            "selected_tengine": existing_site.get("selected_tengine", None),
+            "anti_tamper_status": existing_site.get(
+                "anti_tamper_status", "not_enabled"
+            ),
+            "anti_tamper_rules": existing_site.get("anti_tamper_rules", []),
+            "asset_group": existing_site.get("asset_group", 1),
+            "ntlm_enabled": existing_site.get("ntlm_enabled", False),
+            "proxy_protocol": existing_site.get("proxy_protocol", False),
+            "realip_config_enable": existing_site.get("realip_config_enable", False),
+            "realip_config": existing_site.get(
+                "realip_config",
+                {"set_real_ip_from": "", "real_ip_header": "proxy_protocol"},
+            ),
+            "detector_ip_source_from": args.get(
+                "detector_ip_source_from",
+                existing_site.get("detector_ip_source_from", "local"),
+            ),
+            "cookie_security": existing_site.get(
+                "cookie_security",
+                {
+                    "action": "dry_run",
+                    "is_enabled": False,
+                    "log_option": "Drop",
+                    "security_attribute": [],
+                    "protection": "propertyOnly",
+                    "cookie": [],
+                },
+            ),
+            "intf_config": existing_site.get(
+                "intf_config",
+                {
+                    "training_config": {
+                        "days": 3,
+                        "period": {"start": "7:00", "end": "23:59"},
+                        "min_samples": 1000,
+                        "min_src_ips": 100,
+                        "train_atks": False,
+                        "log_samples": True,
+                    },
+                    "restart_training_config": {
+                        "enabled": True,
+                        "cycle": 0,
+                        "max_detect_num": 0,
+                        "abnormal_range": [0, 100],
+                        "inconsistent_range": [0, 10],
+                        "auto_restart_on_failure": False,
+                    },
+                    "auto_intf_detection_config": {"enabled": True, "filters": []},
+                },
+            ),
+        }
+        return client.put("/api/SoftwareClusterReverseProxyWebsiteAPI", body)
+
+    elif name == "delete_software_cluster_reverse_proxy_website":
+        return client.delete(
+            "/api/SoftwareClusterReverseProxyWebsiteAPI", {"id__in": args["id__in"]}
+        )
+
+    # ---- 硬件版反向代理站点管理 ----
+    elif name == "list_hardware_reverse_proxy_websites":
+        params = {}
+        for key in ("id__in", "count", "offset"):
+            if key in args:
+                params[key] = args[key]
+        return client.get("/api/HardwareReverseProxyWebsiteAPI", params=params)
+
+    elif name == "create_hardware_reverse_proxy_website":
+        body = {
+            "name": args["name"],
+            "interface": args["interface"],
+            "ip": args["ip"],
+            "ports": args.get("ports", []),
+            "server_names": args["server_names"],
+            "url_paths": args.get("url_paths", [{"op": "pre", "url_path": "/"}]),
+            "backend_config": args.get(
+                "backend_config",
+                {
+                    "type": "proxy",
+                    "load_balance_policy": "Round Robin",
+                    "servers": [{"protocol": "http", "host": "foobar.com", "port": 80}],
+                    "x_forwarded_for_action": "append",
+                },
+            ),
+            "session_method": args["session_method"],
+            "policy_group": args["policy_group"],
+            "detector_ip_source_from": args.get("detector_ip_source_from", "default"),
+            "is_enabled": args.get("is_enabled", False),
+            "asset_group": args.get("asset_group", 1),
+            "ntlm_enabled": args.get("ntlm_enabled", False),
+        }
+
+        # 添加可选字段
+        if "ssl_cert" in args:
+            body["ssl_cert"] = args["ssl_cert"]
+        if "ssl_gm_cert" in args:
+            body["ssl_gm_cert"] = args["ssl_gm_cert"]
+        if "remark" in args:
+            body["remark"] = args["remark"]
+
+        return client.post("/api/HardwareReverseProxyWebsiteAPI", body)
+
+    elif name == "update_hardware_reverse_proxy_website":
+        # 先获取现有站点配置
+        existing_sites = client.get(
+            "/api/HardwareReverseProxyWebsiteAPI", params={"id__in": [args["id"]]}
+        )
+        if not existing_sites or not existing_sites.get("data"):
+            return {"error": f"Site with ID {args['id']} not found"}
+
+        existing_site = existing_sites["data"][0]
+
+        body = {
+            "id": args["id"],
+            "name": args["name"],
+            "interface": args["interface"],
+            "ip": args["ip"],
+            "ports": args.get("ports", existing_site.get("ports", [])),
+            "server_names": args["server_names"],
+            "url_paths": args.get(
+                "url_paths",
+                existing_site.get("url_paths", [{"op": "pre", "url_path": "/"}]),
+            ),
+            "backend_config": args.get(
+                "backend_config",
+                existing_site.get(
+                    "backend_config",
+                    {
+                        "type": "proxy",
+                        "load_balance_policy": "Round Robin",
+                        "servers": [
+                            {"protocol": "http", "host": "foobar.com", "port": 80}
+                        ],
+                        "x_forwarded_for_action": "append",
+                    },
+                ),
+            ),
+            "session_method": args["session_method"],
+            "policy_group": args["policy_group"],
+            "detector_ip_source_from": args.get(
+                "detector_ip_source_from",
+                existing_site.get("detector_ip_source_from", "default"),
+            ),
+            "is_enabled": args.get(
+                "is_enabled", existing_site.get("is_enabled", False)
+            ),
+            "asset_group": args.get("asset_group", existing_site.get("asset_group", 1)),
+            "ntlm_enabled": args.get(
+                "ntlm_enabled", existing_site.get("ntlm_enabled", False)
+            ),
+        }
+
+        # 添加可选字段
+        if "ssl_cert" in args:
+            body["ssl_cert"] = args["ssl_cert"]
+        if "ssl_gm_cert" in args:
+            body["ssl_gm_cert"] = args["ssl_gm_cert"]
+        if "remark" in args:
+            body["remark"] = args["remark"]
+
+        return client.put("/api/HardwareReverseProxyWebsiteAPI", body)
+
+    elif name == "delete_hardware_reverse_proxy_website":
+        return client.delete(
+            "/api/HardwareReverseProxyWebsiteAPI", {"id__in": args["id__in"]}
+        )
+
+    # ---- 硬件版透明桥站点管理 ----
+    elif name == "list_hardware_transparent_bridging_websites":
+        params = {}
+        for key in ("id__in", "count", "offset"):
+            if key in args:
+                params[key] = args[key]
+        return client.get("/api/HardwareTransparentBridgingWebsiteAPI", params=params)
+
+    elif name == "create_hardware_transparent_bridging_website":
+        body = {
+            "name": args["name"],
+            "addrs": args["addrs"],
+            "server_names": args["server_names"],
+            "url_paths": args.get("url_paths", [{"op": "pre", "url_path": "/"}]),
+            "policy_group": args["policy_group"],
+            "detector_ip_source_from": args.get("detector_ip_source_from", "default"),
+            "is_enabled": args.get("is_enabled", False),
+            "asset_group": args.get("asset_group", 1),
+        }
+
+        # 添加可选字段
+        if "remark" in args:
+            body["remark"] = args["remark"]
+
+        return client.post("/api/HardwareTransparentBridgingWebsiteAPI", body)
+
+    elif name == "update_hardware_transparent_bridging_website":
+        # 先获取现有站点配置
+        existing_sites = client.get(
+            "/api/HardwareTransparentBridgingWebsiteAPI",
+            params={"id__in": [args["id"]]},
+        )
+        if not existing_sites or not existing_sites.get("data"):
+            return {"error": f"Site with ID {args['id']} not found"}
+
+        existing_site = existing_sites["data"][0]
+
+        body = {
+            "id": args["id"],
+            "name": args["name"],
+            "addrs": args["addrs"],
+            "server_names": args["server_names"],
+            "url_paths": args.get(
+                "url_paths",
+                existing_site.get("url_paths", [{"op": "pre", "url_path": "/"}]),
+            ),
+            "policy_group": args["policy_group"],
+            "detector_ip_source_from": args.get(
+                "detector_ip_source_from",
+                existing_site.get("detector_ip_source_from", "default"),
+            ),
+            "is_enabled": args.get(
+                "is_enabled", existing_site.get("is_enabled", False)
+            ),
+            "asset_group": args.get("asset_group", existing_site.get("asset_group", 1)),
+        }
+
+        # 添加可选字段
+        if "remark" in args:
+            body["remark"] = args["remark"]
+
+        return client.put("/api/HardwareTransparentBridgingWebsiteAPI", body)
+
+    elif name == "delete_hardware_transparent_bridging_website":
+        return client.delete(
+            "/api/HardwareTransparentBridgingWebsiteAPI", {"id__in": args["id__in"]}
+        )
+
+    # ---- 硬件版透明代理站点管理 ----
+    elif name == "list_hardware_transparent_proxy_websites":
+        params = {}
+        for key in ("id__in", "count", "offset"):
+            if key in args:
+                params[key] = args[key]
+        return client.get("/api/HardwareTransparentProxyWebsiteAPI", params=params)
+
+    elif name == "create_hardware_transparent_proxy_website":
+        body = {
+            "name": args["name"],
+            "interface": args["interface"],
+            "server_names": args["server_names"],
+            "addrs": args["addrs"],
+            "url_paths": args.get("url_paths", [{"op": "pre", "url_path": "/"}]),
+            "policy_group": args["policy_group"],
+            "detector_ip_source_from": args.get("detector_ip_source_from", "default"),
+            "is_enabled": args.get("is_enabled", False),
+            "asset_group": args.get("asset_group", 1),
+        }
+
+        # 添加可选字段
+        if "ssl_cert" in args:
+            body["ssl_cert"] = args["ssl_cert"]
+        if "ssl_gm_cert" in args:
+            body["ssl_gm_cert"] = args["ssl_gm_cert"]
+        if "remark" in args:
+            body["remark"] = args["remark"]
+
+        return client.post("/api/HardwareTransparentProxyWebsiteAPI", body)
+
+    elif name == "update_hardware_transparent_proxy_website":
+        # 先获取现有站点配置
+        existing_sites = client.get(
+            "/api/HardwareTransparentProxyWebsiteAPI", params={"id__in": [args["id"]]}
+        )
+        if not existing_sites or not existing_sites.get("data"):
+            return {"error": f"Site with ID {args['id']} not found"}
+
+        existing_site = existing_sites["data"][0]
+
+        body = {
+            "id": args["id"],
+            "name": args["name"],
+            "interface": args["interface"],
+            "server_names": args["server_names"],
+            "addrs": args["addrs"],
+            "url_paths": args.get(
+                "url_paths",
+                existing_site.get("url_paths", [{"op": "pre", "url_path": "/"}]),
+            ),
+            "policy_group": args["policy_group"],
+            "detector_ip_source_from": args.get(
+                "detector_ip_source_from",
+                existing_site.get("detector_ip_source_from", "default"),
+            ),
+            "is_enabled": args.get(
+                "is_enabled", existing_site.get("is_enabled", False)
+            ),
+            "asset_group": args.get("asset_group", existing_site.get("asset_group", 1)),
+        }
+
+        # 添加可选字段
+        if "ssl_cert" in args:
+            body["ssl_cert"] = args["ssl_cert"]
+        if "ssl_gm_cert" in args:
+            body["ssl_gm_cert"] = args["ssl_gm_cert"]
+        if "remark" in args:
+            body["remark"] = args["remark"]
+
+        return client.put("/api/HardwareTransparentProxyWebsiteAPI", body)
+
+    elif name == "delete_hardware_transparent_proxy_website":
+        return client.delete(
+            "/api/HardwareTransparentProxyWebsiteAPI", {"id__in": args["id__in"]}
         )
 
     # ---- Bypass 状态 ----
@@ -2393,10 +3650,22 @@ async def _dispatch(client: SafeLineClient, name: str, args: dict) -> Any:
 
     # ---- ES 索引管理 ----
     elif name == "list_es_indices":
-        return client.get("/api/ESIndices")
+        params = {"alias": args["alias"]}
+        return client.get("/api/ESIndices", params=params)
 
     elif name == "delete_es_index":
-        return client.delete("/api/ESIndices", {"index_name": args["index_name"]})
+        body = {"action": "unfreeze", "indices": [args["index_name"]]}
+        return client.delete("/api/ESIndices", body)
+
+    elif name == "delete_es_indices":
+        body = {"indices": args["indices"]}
+        if "action" in args:
+            body["action"] = args["action"]
+        else:
+            body["action"] = "unfreeze"
+        if "scope" in args:
+            body["scope"] = args["scope"]
+        return client.delete("/api/ESIndices", body)
 
     elif name == "restore_es_index":
         return client.put("/api/ESIndices", {"index_name": args["index_name"]})
