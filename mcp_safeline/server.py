@@ -1630,7 +1630,50 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
                         "name": {"type": "string", "description": "规则名称"},
                         "attack_type": {
                             "type": "integer",
-                            "description": "攻击类型 ID，-1 表示自定义",
+                            "description": """攻击类型 ID，-1 表示自定义
+攻击类型映射表:
+  -1: 自定义
+  0: SQL注入
+  1: XSS(跨站脚本攻击)
+  2: CSRF(跨站请求伪造)
+  3: SSRF(服务端请求伪造)
+  4: DOS(拒绝服务攻击)
+  5: Backdoor(后门)
+  6: Deserialization(反序列化)
+  7: Code Execution(代码执行)
+  8: Code Injection(代码注入)
+  9: Command Injection(命令注入)
+  10: File Upload(文件上传)
+  11: File Inclusion(文件包含)
+  12: Redirect(重定向)
+  13: Weak Permission(权限不当)
+  14: Info Leak(信息泄露)
+  15: Unauthorized Access(未授权访问)
+  16: Unsafe Config(不安全配置)
+  17: XXE(XML外部实体注入)
+  18: XPath Injection(XPath注入)
+  19: LDAP Injection(LDAP注入)
+  20: Directory Traversal(目录穿越)
+  21: Scanner(扫描器)
+  22: Permission Bypass(水平权限绕过)
+  23: ACL Bypass(垂直权限绕过)
+  24: File Write(文件修改)
+  25: File Download(文件读取)
+  26: File Deletion(文件删除)
+  27: Logic Error(逻辑错误)
+  28: CRLF Injection(CRLF注入)
+  29: SSTI(模板注入)
+  30: Click Hijacking(点击劫持)
+  31: Buffer Overflow(缓冲区溢出)
+  32: Integer Overflow(整数溢出)
+  33: Format String(格式化字符串)
+  34: Race Condition(条件竞争)
+  35: HTTP Compliance Violation(HTTP协议违规)
+  36: HTTP Request Smuggling(HTTP请求走私)
+  61: Timeout(超时)
+  62: Unknown(未知)
+  63: Threat Intelligence(威胁情报)
+  64: Cookie Falsification(Cookie伪造)""",
                         },
                         "comment": {"type": "string", "description": "备注"},
                         "description": {"type": "string", "description": "规则描述"},
@@ -1646,28 +1689,53 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
   - str: 精确匹配
   - re: 正则表达式匹配
   - cidr: IP/CIDR 范围匹配
+  - fromregion: IP来自地区
+  - ingroup: IP属于IP组
+  - $eq: 数值比较等于
+  - $lt: 数值比较小于
+  - $le: 数值比较小于或等于
+  - $ne: 数值比较不等于
+  - $gt: 数值比较大于
+  - $ge: 数值比较大于或等于
 可用字段:
-  - urlpath: URL 路径
+  - urlpath: URL 路径（请求中原始 URI，不解码）
   - decoded_path: 解码后的路径
   - decoded_query: 解码后的查询参数
   - query: 查询参数 {"key": "id", "value": "^li.*"}
   - method: 请求方法 (GET/POST/PUT/DELETE 等)
-  - host: 主机名
+  - host: 主机名（请求头中的 host 字段）
   - cookie_raw: 原始 Cookie 字符串
   - cookie: Cookie (key/value 分离)
   - user_agent: User-Agent
-  - remote_addr: 客户端 IP (CIDR 格式如 10.0.0.0/8)
+  - remote_addr: 客户端源 IP（根据源 IP 获取方式从请求中获取）
   - x_forwarded_for: X-Forwarded-For 头
   - origin: Origin 头
   - custom_header: 自定义请求头 {"key": "x-realip", "value": "9.9.9.9"}
-  - request_header: 请求头（模糊匹配）
+  - request_header: 请求头（模糊匹配，原始 HTTP 完整请求头）
   - content_type: Content-Type
+  - content_length: Content-Length
   - socket_src_ip: 源 IP（Socket 层）
   - response_body: 响应体
+  - request_body: 完整请求体
+  - referer: HTTP 请求头中的 referer
+  - authorization: HTTP 请求头中的 Authorization
+  - session: Session（用户的 Session 内容，需先配置 Session 获取方式）
+  - request_header_length: HTTP 请求头的长度
+  - request_body_length: HTTP 请求完整 body 的长度
+  - form: POST 参数 {"key": "name", "value": "huang"}
+  - form_keys_len: form 数据中的任意 key 长度
+  - form_vals_len: form 数据中的任意 val 长度
+  - form_keys_count: form 数据中的 key 数量
+  - file_name: 上传文件名
+  - response_status: HTTP 状态码
+  - response_header: HTTP 响应头 {"key": "xray", "value": "1234"}
+  - response_header_raw: 完整 HTTP 响应头 {"response_header_raw": "Server: bfe"}
 示例:
   - 路径包含: {"infix": {"urlpath": "admin"}}
   - 路径不包含: {"$NOT": [{"infix": {"urlpath": "test"}}]}
   - IP 范围: {"cidr": {"remote_addr": "10.0.0.0/8"}}
+  - IP 来自地区: {"fromregion": {"remote_addr": "CN-BJ"}} (常用: CN=中国大陆, CN-BJ=北京, CN-SH=上海, CN-HA=河南, CN-GD=广东, US=美国, JP=日本, KR=韩国等)
+  - IP 属于 IP 组: {"ingroup": {"remote_addr": 1}}  (1 为 IP 组 ID)
   - 多条件 AND: {"$AND": [{"infix": {"urlpath": "api"}}, {"str": {"host": "example.com"}}]}
   - 多条件 OR: {"$OR": [{"infix": {"urlpath": "a"}}, {"infix": {"urlpath": "b"}}]}
 每个匹配项后面可加 "decode_methods": [] 空数组""",
@@ -1716,6 +1784,10 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
                             "type": "integer",
                             "description": "惩罚时长（秒）",
                         },
+                        "risk_level": {
+                            "type": "integer",
+                            "description": """风险等级：0=无, 1=低, 2=中, 3=高""",
+                        },
                     },
                     "required": ["name", "action", "pattern"],
                 },
@@ -1742,28 +1814,53 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
   - str: 精确匹配
   - re: 正则表达式匹配
   - cidr: IP/CIDR 范围匹配
+  - fromregion: IP来自地区
+  - ingroup: IP属于IP组
+  - $eq: 数值比较等于
+  - $lt: 数值比较小于
+  - $le: 数值比较小于或等于
+  - $ne: 数值比较不等于
+  - $gt: 数值比较大于
+  - $ge: 数值比较大于或等于
 可用字段:
-  - urlpath: URL 路径
+  - urlpath: URL 路径（请求中原始 URI，不解码）
   - decoded_path: 解码后的路径
   - decoded_query: 解码后的查询参数
   - query: 查询参数 {"key": "id", "value": "^li.*"}
   - method: 请求方法 (GET/POST/PUT/DELETE 等)
-  - host: 主机名
+  - host: 主机名（请求头中的 host 字段）
   - cookie_raw: 原始 Cookie 字符串
   - cookie: Cookie (key/value 分离)
   - user_agent: User-Agent
-  - remote_addr: 客户端 IP (CIDR 格式如 10.0.0.0/8)
+  - remote_addr: 客户端源 IP（根据源 IP 获取方式从请求中获取）
   - x_forwarded_for: X-Forwarded-For 头
   - origin: Origin 头
   - custom_header: 自定义请求头 {"key": "x-realip", "value": "9.9.9.9"}
-  - request_header: 请求头（模糊匹配）
+  - request_header: 请求头（模糊匹配，原始 HTTP 完整请求头）
   - content_type: Content-Type
+  - content_length: Content-Length
   - socket_src_ip: 源 IP（Socket 层）
   - response_body: 响应体
+  - request_body: 完整请求体
+  - referer: HTTP 请求头中的 referer
+  - authorization: HTTP 请求头中的 Authorization
+  - session: Session（用户的 Session 内容，需先配置 Session 获取方式）
+  - request_header_length: HTTP 请求头的长度
+  - request_body_length: HTTP 请求完整 body 的长度
+  - form: POST 参数 {"key": "name", "value": "huang"}
+  - form_keys_len: form 数据中的任意 key 长度
+  - form_vals_len: form 数据中的任意 val 长度
+  - form_keys_count: form 数据中的 key 数量
+  - file_name: 上传文件名
+  - response_status: HTTP 状态码
+  - response_header: HTTP 响应头 {"key": "xray", "value": "1234"}
+  - response_header_raw: 完整 HTTP 响应头 {"response_header_raw": "Server: bfe"}
 示例:
   - 路径包含: {"infix": {"urlpath": "admin"}}
   - 路径不包含: {"$NOT": [{"infix": {"urlpath": "test"}}]}
   - IP 范围: {"cidr": {"remote_addr": "10.0.0.0/8"}}
+  - IP 来自地区: {"fromregion": {"remote_addr": "CN-BJ"}} (常用: CN=中国大陆, CN-BJ=北京, CN-SH=上海, CN-HA=河南, CN-GD=广东, US=美国, JP=日本, KR=韩国等)
+  - IP 属于 IP 组: {"ingroup": {"remote_addr": 1}}  (1 为 IP 组 ID)
   - 多条件 AND: {"$AND": [{"infix": {"urlpath": "api"}}, {"str": {"host": "example.com"}}]}
   - 多条件 OR: {"$OR": [{"infix": {"urlpath": "a"}}, {"infix": {"urlpath": "b"}}]}
 每个匹配项后面可加 "decode_methods": [] 空数组""",
@@ -3536,7 +3633,7 @@ async def _dispatch(client: SafeLineClient, name: str, args: dict) -> Any:
             "forbidden_page_config": None,
             "modules_list": [],
             "module_management": {"disabled": [], "enabled": []},
-            "risk_level": 0,
+            "risk_level": args.get("risk_level", 0),
             "punish_type": args.get("punish_type"),
             "punish_time": args.get("punish_time"),
             "req_rule_id": "",
@@ -3577,7 +3674,7 @@ async def _dispatch(client: SafeLineClient, name: str, args: dict) -> Any:
                 "cron_config",
                 {"type": "all", "start": "00:00", "end": "23:59", "days": []},
             ),
-            "risk_level": 0,
+            "risk_level": args.get("risk_level", 0),
             "punish_type": args.get("punish_type"),
             "punish_time": args.get("punish_time"),
             "forbidden_page_config": None,
@@ -3952,9 +4049,12 @@ def main():
         "--no-verify-ssl",
         action="store_true",
         default=False,
-        help="禁用 SSL 证书验证（自签名证书时使用）",
+        help="禁用 SSL 证书验证（自签名证书时使用，也可通过环境变量 SAFELINE_NO_VERIFY_SSL=1 设置）",
     )
     args = parser.parse_args()
+
+    # 环境变量 SAFELINE_NO_VERIFY_SSL 可替代 --no-verify-ssl 参数
+    no_verify_ssl = args.no_verify_ssl or os.environ.get("SAFELINE_NO_VERIFY_SSL", "").lower() in ("1", "true", "yes")
 
     if not args.base_url:
         parser.error(
@@ -3963,7 +4063,7 @@ def main():
     if not args.token:
         parser.error("必须通过 --token 参数或 SAFELINE_TOKEN 环境变量指定 API Token")
 
-    server = create_server(args.base_url, args.token, verify_ssl=not args.no_verify_ssl)
+    server = create_server(args.base_url, args.token, verify_ssl=not no_verify_ssl)
 
     async def run():
         async with stdio_server() as (read_stream, write_stream):
