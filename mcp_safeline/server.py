@@ -15,6 +15,9 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp import types
 
+from . import network as network_tools
+from . import upgrade as upgrade_tools
+
 
 # ---------------------------------------------------------------------------
 # SafeLine API client
@@ -92,12 +95,18 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
     client = SafeLineClient(base_url, token, verify_ssl)
     server = Server("mcp-safeline")
 
+    # 网络类工具由 network 模块提供，按部署模式区分能力
+    _network_tools = network_tools.build_network_tools()
+
+    # 系统升级类工具（detector 引擎 / patch）由 upgrade 模块提供
+    _upgrade_tools = upgrade_tools.build_upgrade_tools()
+
     # -----------------------------------------------------------------------
     # Tool list
     # -----------------------------------------------------------------------
     @server.list_tools()
     async def list_tools() -> list[types.Tool]:
-        return [
+        _tools: list[types.Tool] = [
             # ---- 认证 / profile ----
             types.Tool(
                 name="get_profile",
@@ -2237,6 +2246,9 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
                 },
             ),
         ]
+        _tools.extend(_network_tools)
+        _tools.extend(_upgrade_tools)
+        return _tools
 
     # -----------------------------------------------------------------------
     # Tool call handler
@@ -2266,6 +2278,16 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
 
 async def _dispatch(client: SafeLineClient, name: str, args: dict) -> Any:
     """Route tool calls to the appropriate SafeLine API endpoint."""
+
+    # ---- 网络管理（硬件 WAF）----
+    network_result = network_tools.handle_network_tool(client, name, args)
+    if network_result is not None:
+        return network_result
+
+    # ---- 系统升级（detector / patch）----
+    upgrade_result = upgrade_tools.handle_upgrade_tool(client, name, args)
+    if upgrade_result is not None:
+        return upgrade_result
 
     # ---- 认证 ----
     if name == "get_profile":
