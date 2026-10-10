@@ -79,6 +79,80 @@ def _fmt(data: Any) -> str:
     return json.dumps(data, ensure_ascii=False, indent=2)
 
 
+# 支持记录级查询/删除的日志 scope（源自 skyview 各 filter.py 中带 async_delete 的 scope）
+_LOG_SCOPES = (
+    "log:fullaccess",
+    "log:fullaccess:detail",
+    "log:detect_log",
+    "log:bot:record",
+    "log:bot:result",
+    "log:portrait",
+)
+
+
+def _join_filter_value(value: Any) -> Any:
+    """把多值筛选条件拼成 FilterV2API 期望的形式。
+
+    服务端 `ESOperator.get_undecorated_Q`（skyview/utils/filter/es/fields.py）对
+    `__in` 的处理是 `value.split(",")` 后构造 `terms` 查询；而调用方
+    `ScopeBase.apply_filters`（skyview/utils/filter/scope.py）会先对值列表逐个
+    遍历再逐个 chain_filter（即逐个 AND）。
+
+    这带来两个反直觉的约束：
+
+    1. 多值必须放在**同一个字符串**里用逗号分隔。传字符串列表 ["A","B"] 会被
+       AND 成 terms("A") AND terms("B")，每个 term 都是一个含逗号的字面量，
+       结果必然为空 —— 即“查不到、也删不掉”。
+    2. 传裸字符串 "A,B" 也不行：apply_filters 遍历字符串会退化成逐字符，
+       于是变成 65 个单字符 term 的 AND，同样匹配不到。
+
+    因此正确形式是**单元素列表 ["A,B"]**：遍历一次拿到 "A,B"，split 后得到
+    两个 term，等价于 terms(A, B)。
+
+    单值情况下同样返回 ["A"]，两种场景统一。
+    """
+    if isinstance(value, (list, tuple, set)):
+        items = [str(v) for v in value]
+    else:
+        # 允许调用方直接传 "A,B" 逗号分隔字符串
+        items = [p for p in str(value).split(",") if p != ""]
+    return [",".join(items)]
+
+
+def _build_log_filters(args: dict) -> dict:
+    """把 filters 组装成 FilterV2API 的 body/query 参数（已按服务端契约归一化）。"""
+    filters = {}
+    for key, value in (args.get("filters") or {}).items():
+        if value is None:
+            continue
+        filters[key] = _join_filter_value(value)
+    return filters
+
+
+def _validate_log_scope(scope: Any) -> Optional[dict]:
+    if scope not in _LOG_SCOPES:
+        return {"error": f"未知的 scope: {scope}；可选值: {', '.join(_LOG_SCOPES)}"}
+    return None
+
+
+def _build_log_filter_params(args: dict) -> dict:
+    """组装 GET /api/FilterV2API 的 query 参数。
+
+    注意：value 用单元素列表包装时，httpx 在 query string 中会编码成
+    `event_id__in=A%2CB`，与 body 的 ["A,B"] 等价，服务端解析结果一致。
+    """
+    err = _validate_log_scope(args.get("scope"))
+    if err:
+        return err
+
+    params: dict = {"scope": args["scope"]}
+    params.update(_build_log_filters(args))
+    for key in ("count", "offset", "order"):
+        if args.get(key) is not None:
+            params[key] = args[key]
+    return params
+
+
 def _require_ip_group_id(args: dict[str, Any]) -> int:
     group_id = args.get("id", args.get("ip_group_id"))
     if group_id is None:
@@ -1525,6 +1599,78 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
                             "description": "展示条数，最小 1，最大 1000，默认 100",
                         },
                     },
+                },
+            ),
+            # ---- 日志记录（记录级查询 / 删除）----
+            types.Tool(
+                name="list_log_records",
+                description=(
+                    "查询日志记录（记录级，可拿到 event_id 供 delete_log_records 使用）。"
+                    "scope 对应各类日志：log:fullaccess 访问日志、log:fullaccess:detail 访问日志详情、"
+                    "log:detect_log 攻击检测日志、log:bot:record Bot 记录日志、log:bot:result Bot 结果日志、"
+                    "log:portrait 智能学习画像日志。"
+                    "filters 支持 event_id__in / src_ip / urlpath / host / method 等字段，"
+                    "具体可用字段随 scope 而异，可先用 get_filter_options 查看。"
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "scope": {
+                            "type": "string",
+                            "enum": [
+                                "log:fullaccess",
+                                "log:fullaccess:detail",
+                                "log:detect_log",
+                                "log:bot:record",
+                                "log:bot:result",
+                                "log:portrait",
+                            ],
+                            "description": "日志类型 scope",
+                        },
+                        "filters": {
+                            "type": "object",
+                            "description": "筛选条件，如 {'src_ip': '1.2.3.4'}；多值字段传数组或逗号分隔字符串，如 {'event_id__in': ['id1','id2']}",
+                        },
+                        "count": {"type": "integer", "description": "分页：每页数量"},
+                        "offset": {"type": "integer", "description": "分页：偏移量"},
+                        "order": {
+                            "type": "string",
+                            "enum": ["asc", "desc"],
+                            "description": "按时间排序方向（可选）",
+                        },
+                    },
+                    "required": ["scope"],
+                },
+            ),
+            types.Tool(
+                name="delete_log_records",
+                description=(
+                    "按筛选条件删除日志记录（记录级删除，不影响索引本身，不会破坏写入索引）。"
+                    "异步执行：接口立即返回，实际删除由后台任务完成，调用后应稍等再用 list_log_records 复核。"
+                    "不可恢复，删除前请先用 list_log_records 确认命中范围。"
+                    "scope 取值同 list_log_records；filters 至少需给一个条件（如 event_id__in）以避免误删整库。"
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "scope": {
+                            "type": "string",
+                            "enum": [
+                                "log:fullaccess",
+                                "log:fullaccess:detail",
+                                "log:detect_log",
+                                "log:bot:record",
+                                "log:bot:result",
+                                "log:portrait",
+                            ],
+                            "description": "日志类型 scope",
+                        },
+                        "filters": {
+                            "type": "object",
+                            "description": "删除条件，如 {'event_id__in': ['id1','id2']} 或 {'src_ip': '1.2.3.4'}；必填",
+                        },
+                    },
+                    "required": ["scope", "filters"],
                 },
             ),
             # ---- 防护策略 / Policy ----
@@ -3520,6 +3666,24 @@ async def _dispatch(client: SafeLineClient, name: str, args: dict) -> Any:
 
     elif name == "update_log_flag_config":
         return client.put("/api/LogFlagConfig", args["config"])
+
+    # ---- 日志记录（记录级查询 / 删除）----
+    elif name == "list_log_records":
+        params = _build_log_filter_params(args)
+        if "error" in params:
+            return params
+        return client.get("/api/FilterV2API", params=params)
+
+    elif name == "delete_log_records":
+        err = _validate_log_scope(args.get("scope"))
+        if err:
+            return err
+        filters = _build_log_filters(args)
+        if not filters:
+            return {"error": "filters 不能为空：记录级删除必须给出至少一个条件，否则会命中该 scope 下的全部日志"}
+        body = {"scope": args["scope"]}
+        body.update(filters)
+        return client.delete("/api/FilterV2API", body)
 
     # ---- 筛选 ----
     elif name == "get_filter_options":
