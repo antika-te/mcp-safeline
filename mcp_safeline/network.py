@@ -16,6 +16,8 @@ SkyviewOptions.operation_mode（值为 SafeLineOperationMode 的可读字符串�
 
 from typing import Any
 
+import httpx
+
 # SafeLineOperationMode 取值，来自 skyview/skyview/utils/constants/utils.py
 MODE_REVERSE_PROXY = "Hardware Reverse Proxy"
 MODE_TRANSPARENT_PROXY = "Hardware Transparent Proxy"
@@ -616,6 +618,47 @@ _TOOLS_BASE = [
             "required": ["hostname"],
         },
     ),
+    (
+        "get_business_gateway",
+        "查询业务网关配置（只读）。返回被指定为业务网关出口的链路列表及其 IPv4/IPv6 网关地址。"
+        "业务网关是设备级单例配置，其作用是把选中的链路挂进 vrf-traffic（路由表 100），"
+        "并写入该表的默认路由，从而与管理面（主表 main）的路由彻底隔离。"
+        "这是 25.03.007 起新增的能力；更早版本会返回该接口不存在。",
+        {"type": "object", "properties": {}},
+    ),
+    (
+        "set_business_gateway",
+        "设置业务网关：把选中的链路挂进 vrf-traffic（表 100）并设置该表的默认路由。"
+        "整体替换语义——本工具会覆盖既有配置（与页面行为一致），传空 link_names 即解除业务网关。"
+        "准入限制（25.03.010 起由后端强制校验）：链路类型只能是未被聚合的物理口（LinkTypeDevice）"
+        "或 Bond（LinkTypeBond）；VLAN、Bridge 等虚拟接口会被拒绝，Bond 成员口也会被拒绝。"
+        "网关地址必须与所选链路同网段，且不得等于链路自身地址。"
+        "注意：多口共享同一个网关地址时，只有与该网关同网段的链路会让默认路由带上出接口，"
+        "但所有选中的链路都会被挂进 VRF。"
+        "副作用：变更会使受影响工作组下已启用的站点短暂 disable → enable 并重新下发配置（这是设计行为）。",
+        {
+            "type": "object",
+            "properties": {
+                "link_names": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": (
+                        "业务网关链路的接口名列表，如 ['eth1.2']。"
+                        "整体替换语义：只传你想保留的链路。传空数组 [] 表示解除业务网关。"
+                    ),
+                },
+                "ipv4_gateway": {
+                    "type": "string",
+                    "description": "IPv4 网关地址，应与所选链路同网段，如 '192.168.2.254'。不需要时传空串。",
+                },
+                "ipv6_gateway": {
+                    "type": "string",
+                    "description": "IPv6 网关地址。不需要时传空串。",
+                },
+            },
+            "required": ["link_names"],
+        },
+    ),
 ]
 
 
@@ -848,4 +891,38 @@ def _handle(client, name: str, args: dict) -> Any:
             params["gateway_type"] = args["gateway_type"]
         return client.get("/api/TraceRouteAPI", params=params)
 
+    # ---- 业务网关（25.03.007 起新增）----
+    if name == "get_business_gateway":
+        return _business_gateway_call(client, "get", "/api/BusinessGatewayAPI")
+
+    if name == "set_business_gateway":
+        body = {
+            "link_names": args.get("link_names", []),
+            "ipv4_gateway": args.get("ipv4_gateway", ""),
+            "ipv6_gateway": args.get("ipv6_gateway", ""),
+        }
+        return _business_gateway_call(client, "put", "/api/BusinessGatewayAPI", body)
+
     return None
+
+
+# 业务网关是 25.03.007 引入的能力。更早的版本（21.07 / 23.01 / 25.03.005~006）
+# 没有这个接口，调用会拿到 Django 的 404 HTML 页（非 JSON），调用方很难判断是
+# 「设备版本不支持」还是「路径写错了」。这里在 HTTP 层兜住 404 并归一成明确提示。
+_BUSINESS_GATEWAY_MISSING_HINT = (
+    "该设备不支持业务网关。业务网关是 25.03.007 起新增的能力，"
+    "当前设备版本低于该基线（21.07 / 23.01 系列，或 25.03.006 及更早）。"
+    "请改用管理面默认网关（set_default_gateway），或先升级到 25.03.007 及以上。"
+)
+
+
+def _business_gateway_call(client, method: str, path: str, body: Any = None) -> Any:
+    """调用业务网关接口；404 时归一成版本提示。"""
+    try:
+        if method == "put":
+            return client.put(path, body)
+        return client.get(path)
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            return {"error": _BUSINESS_GATEWAY_MISSING_HINT}
+        raise

@@ -32,6 +32,32 @@ class SafeLineClient:
         self.token = token
         self.verify_ssl = verify_ssl
 
+    @staticmethod
+    def _coerce(value: Any) -> str:
+        """把工具参数归一化成干净的字符串。
+
+        MCP 客户端有时会把 URL 写成 `--base-url=https://x` 或加引号；这些杂散
+        前缀会拼出非法地址，这里统一剥掉。非字符串一律视作未提供。
+        """
+        if not isinstance(value, str):
+            return ""
+        return value.strip().strip("\"'").lstrip("-").removeprefix("base-url=").strip()
+
+    def with_target(
+        self, base_url: Optional[str] = None, token: Optional[str] = None
+    ) -> "SafeLineClient":
+        """派生一个指向其他 SafeLine 设备的 client。
+
+        工具调用可传入 base_url / token 临时覆盖默认目标，避免改配置文件重启
+        MCP server；未传入的字段沿用当前值。
+        """
+        next_url = self._coerce(base_url) or self.base_url
+        next_token = self._coerce(token) or self.token
+        # scheme 按 RFC 3986 不区分大小写，已带 scheme 就原样保留
+        if not next_url.lower().startswith(("http://", "https://")):
+            next_url = f"https://{next_url}"
+        return SafeLineClient(next_url, next_token, self.verify_ssl)
+
     def _headers(self) -> dict:
         return {
             "API-TOKEN": self.token,
@@ -77,6 +103,43 @@ class SafeLineClient:
 
 def _fmt(data: Any) -> str:
     return json.dumps(data, ensure_ascii=False, indent=2)
+
+
+# 每个工具都可携带这两个可选参数，用于把该次调用指向另一台 SafeLine 设备。
+# 未传时沿用 MCP server 启动时的默认目标（--base-url / SAFELINE_BASE_URL）。
+_TARGET_PARAMS: dict[str, Any] = {
+    "base_url": {
+        "type": "string",
+        "description": (
+            "可选。本次调用目标的 SafeLine 管理地址，如 https://192.168.1.1:9443。"
+            "不传则使用 MCP server 的默认地址。"
+        ),
+    },
+    "token": {
+        "type": "string",
+        "description": (
+            "可选。本次调用目标设备的 API-TOKEN（管理界面「系统设置-防护配置-API Token」）。"
+            "不传则使用 MCP server 的默认 Token。"
+        ),
+    },
+}
+
+
+def _inject_target_params(tool: types.Tool) -> types.Tool:
+    """把 base_url / token 两个可选参数合并进工具 schema。
+
+    幂等：已声明过的不重复添加，方便工具定义处自行指定更详细的描述。
+    """
+    schema = tool.inputSchema or {"type": "object", "properties": {}}
+    properties = schema.setdefault("properties", {})
+    for key, spec in _TARGET_PARAMS.items():
+        properties.setdefault(key, spec)
+    return tool
+
+
+def _resolve_client(client: SafeLineClient, args: dict) -> SafeLineClient:
+    """按本次调用的参数解析出实际使用的 client（见 SafeLineClient.with_target）。"""
+    return client.with_target(args.get("base_url"), args.get("token"))
 
 
 # 支持记录级查询/删除的日志 scope（源自 skyview 各 filter.py 中带 async_delete 的 scope）
@@ -867,7 +930,14 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
                     "type": "object",
                     "properties": {
                         "name": {"type": "string", "description": "站点名称"},
-                        "interface": {"type": "string", "description": "接口"},
+                        "interface": {
+                            "type": "string",
+                            "description": (
+                                "工作组名（不是链路名）。如链路 eth1.2 上建的工作组名为 wg2，"
+                                "这里应填 wg2。填错会导致站点无法关联工作组、"
+                                "不生成 listeners/backends，tengine 也不会监听该 VIP。"
+                            ),
+                        },
                         "ip": {
                             "type": "array",
                             "items": {"type": "string"},
@@ -941,7 +1011,14 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
                     "properties": {
                         "id": {"type": "integer", "description": "站点 ID"},
                         "name": {"type": "string", "description": "站点名称"},
-                        "interface": {"type": "string", "description": "接口"},
+                        "interface": {
+                            "type": "string",
+                            "description": (
+                                "工作组名（不是链路名）。如链路 eth1.2 上建的工作组名为 wg2，"
+                                "这里应填 wg2。填错会导致站点无法关联工作组、"
+                                "不生成 listeners/backends，tengine 也不会监听该 VIP。"
+                            ),
+                        },
                         "ip": {
                             "type": "array",
                             "items": {"type": "string"},
@@ -1166,7 +1243,14 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
                     "type": "object",
                     "properties": {
                         "name": {"type": "string", "description": "站点名称"},
-                        "interface": {"type": "string", "description": "接口"},
+                        "interface": {
+                            "type": "string",
+                            "description": (
+                                "工作组名（不是链路名）。如链路 eth1.2 上建的工作组名为 wg2，"
+                                "这里应填 wg2。填错会导致站点无法关联工作组、"
+                                "不生成 listeners/backends，tengine 也不会监听该 VIP。"
+                            ),
+                        },
                         "server_names": {
                             "type": "array",
                             "items": {"type": "string"},
@@ -1225,7 +1309,14 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
                     "properties": {
                         "id": {"type": "integer", "description": "站点 ID"},
                         "name": {"type": "string", "description": "站点名称"},
-                        "interface": {"type": "string", "description": "接口"},
+                        "interface": {
+                            "type": "string",
+                            "description": (
+                                "工作组名（不是链路名）。如链路 eth1.2 上建的工作组名为 wg2，"
+                                "这里应填 wg2。填错会导致站点无法关联工作组、"
+                                "不生成 listeners/backends，tengine 也不会监听该 VIP。"
+                            ),
+                        },
                         "server_names": {
                             "type": "array",
                             "items": {"type": "string"},
@@ -2394,15 +2485,20 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
         ]
         _tools.extend(_network_tools)
         _tools.extend(_upgrade_tools)
-        return _tools
+        # 全部工具统一支持按调用覆盖目标设备
+        return [_inject_target_params(t) for t in _tools]
 
     # -----------------------------------------------------------------------
     # Tool call handler
     # -----------------------------------------------------------------------
     @server.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
+        args = arguments or {}
+        # 供异常处理回显，_resolve_client 之后会被赋成实际目标
+        target = client
         try:
-            result = await _dispatch(client, name, arguments)
+            target = _resolve_client(client, args)
+            result = await _dispatch(target, name, args)
             return [types.TextContent(type="text", text=_fmt(result))]
         except httpx.HTTPStatusError as e:
             error_body = ""
@@ -2413,17 +2509,31 @@ def create_server(base_url: str, token: str, verify_ssl: bool = False) -> Server
             return [
                 types.TextContent(
                     type="text",
-                    text=_fmt({"error": str(e), "detail": error_body}),
+                    text=_fmt(
+                        {
+                            "error": str(e),
+                            "target": target.base_url,
+                            "detail": error_body,
+                        }
+                    ),
                 )
             ]
         except Exception as e:
-            return [types.TextContent(type="text", text=_fmt({"error": str(e)}))]
+            return [
+                types.TextContent(
+                    type="text",
+                    text=_fmt({"error": str(e), "target": target.base_url}),
+                )
+            ]
 
     return server
 
 
 async def _dispatch(client: SafeLineClient, name: str, args: dict) -> Any:
-    """Route tool calls to the appropriate SafeLine API endpoint."""
+    """Route tool calls to the appropriate SafeLine API endpoint.
+
+    `client` 已由 _resolve_client 解析过本次调用的目标设备。
+    """
 
     # ---- 网络管理（硬件 WAF）----
     network_result = network_tools.handle_network_tool(client, name, args)
@@ -3396,54 +3506,50 @@ async def _dispatch(client: SafeLineClient, name: str, args: dict) -> Any:
 
         existing_site = existing_sites["data"][0]
 
+        # 以现有配置为基底做「读-改-写」，只覆盖调用方显式传入的字段。
+        # 早先的实现是手工列举字段，漏掉了 detector_ip_source、cookie_security、
+        # mtls_config、access_log 等一批服务端必填项，导致 PUT 报
+        # `detector_ip_source: This field is required.` 之类的错误，改不了 interface。
+        # 改为整份配置回传，服务端字段自然保留。
+        _READONLY_FIELDS = (
+            "id",
+            "create_time",
+            "last_update_time",
+            "operation_mode",
+            "policy_rules",
+            "health_check_status",
+            "selected_tengine",
+            "anti_tamper_rules",
+            "tlcp_cert",
+            "proxy_tlcp_cert",
+        )
         body = {
-            "id": args["id"],
-            "name": args["name"],
-            "interface": args["interface"],
-            "ip": args["ip"],
-            "ports": args.get("ports", existing_site.get("ports", [])),
-            "server_names": args["server_names"],
-            "url_paths": args.get(
-                "url_paths",
-                existing_site.get("url_paths", [{"op": "pre", "url_path": "/"}]),
-            ),
-            "backend_config": args.get(
-                "backend_config",
-                existing_site.get(
-                    "backend_config",
-                    {
-                        "type": "proxy",
-                        "load_balance_policy": "Round Robin",
-                        "servers": [
-                            {"protocol": "http", "host": "foobar.com", "port": 80}
-                        ],
-                        "x_forwarded_for_action": "append",
-                    },
-                ),
-            ),
-            "session_method": args["session_method"],
-            "policy_group": args["policy_group"],
-            "detector_ip_source_from": args.get(
-                "detector_ip_source_from",
-                existing_site.get("detector_ip_source_from", "default"),
-            ),
-            "is_enabled": args.get(
-                "is_enabled", existing_site.get("is_enabled", False)
-            ),
-            "asset_group": args.get("asset_group", existing_site.get("asset_group", 1)),
-            "ntlm_enabled": args.get(
-                "ntlm_enabled", existing_site.get("ntlm_enabled", False)
-            ),
+            k: v for k, v in existing_site.items() if k not in _READONLY_FIELDS
         }
 
-        # 添加可选字段
-        if "ssl_cert" in args:
-            body["ssl_cert"] = args["ssl_cert"]
-        if "ssl_gm_cert" in args:
-            body["ssl_gm_cert"] = args["ssl_gm_cert"]
-        if "remark" in args:
-            body["remark"] = args["remark"]
+        # 用调用方显式提供的值覆盖（未提供的沿用现有值）
+        for key in (
+            "name",
+            "interface",
+            "ip",
+            "ports",
+            "server_names",
+            "url_paths",
+            "backend_config",
+            "session_method",
+            "policy_group",
+            "detector_ip_source_from",
+            "is_enabled",
+            "asset_group",
+            "ntlm_enabled",
+            "ssl_cert",
+            "ssl_gm_cert",
+            "remark",
+        ):
+            if key in args:
+                body[key] = args[key]
 
+        body["id"] = args["id"]
         return client.put("/api/HardwareReverseProxyWebsiteAPI", body)
 
     elif name == "delete_hardware_reverse_proxy_website":
